@@ -1,0 +1,110 @@
+name: FResucitary CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov pytest-xdist reportlab Pillow
+      - name: Run test suite
+        run: pytest tests -q --cov=src --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
+          retention-days: 14
+
+  windows-release:
+    name: Windows x64 release
+    runs-on: windows-latest
+    needs: test
+    if: github.event_name != 'pull_request'
+    env:
+      CERT_B64: ${{ secrets.CODE_SIGN_CERT }}
+      CERT_PASS: ${{ secrets.CODE_SIGN_PASS }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip wheel
+          pip install -r requirements-dev.txt
+          python -c "import PyQt6, pytsk3, reportlab, PIL, pypdfium2; print('Dependencies OK')"
+
+      - name: Run Windows tests
+        run: pytest tests -q
+
+      - name: Build standalone application
+        run: pyinstaller FResucitary.spec --clean --noconfirm
+
+      - name: Sign application when certificate is configured
+        if: env.CERT_B64 != ''
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes('cert.pfx', [Convert]::FromBase64String($env:CERT_B64))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object FullName | Select-Object -Last 1
+          if (-not $signtool) { throw 'signtool.exe not found' }
+          & $signtool.FullName sign /f cert.pfx /p $env:CERT_PASS /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com dist\FResucitary\FResucitary.exe
+          Remove-Item cert.pfx -Force
+
+      - name: Install NSIS
+        run: choco install nsis --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          Push-Location packaging
+          try { & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" installer.nsi } finally { Pop-Location }
+
+      - name: Sign installer when certificate is configured
+        if: env.CERT_B64 != ''
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes('cert.pfx', [Convert]::FromBase64String($env:CERT_B64))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object FullName | Select-Object -Last 1
+          $installer = Get-ChildItem dist\FResucitary-Pro-Setup-*.exe | Select-Object -First 1
+          & $signtool.FullName sign /f cert.pfx /p $env:CERT_PASS /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com $installer.FullName
+          Remove-Item cert.pfx -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FResucitary-Pro-Windows-x64
+          path: |
+            dist/FResucitary/**
+            dist/FResucitary-Pro-Setup-*.exe
+          retention-days: 90
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/FResucitary-Pro-Setup-*.exe
+          generate_release_notes: true

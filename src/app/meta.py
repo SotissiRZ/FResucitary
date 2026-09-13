@@ -1,0 +1,5 @@
+"""Single source of truth for FResucitary application metadata."""
+APP_NAME = "FResucitary Pro"
+APP_VERSION = "2.1.3"
+APP_PUBLISHER = "FResucitary"
+APP_ID = "FResucitary.FResucitaryPro"

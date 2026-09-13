@@ -1,0 +1,5 @@
+PyQt6>=6.6.0,<7
+pytsk3>=20260715; platform_system == "Windows"
+reportlab>=4.1.0,<5
+Pillow>=10.2.0,<13
+pypdfium2>=4.28.0,<6

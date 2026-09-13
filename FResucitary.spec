@@ -1,36 +1,57 @@
 # -*- mode: python ; coding: utf-8 -*-
+# Production Windows build: onedir bundle for fast startup and reliable DLL loading.
+from pathlib import Path
+from PyInstaller.utils.hooks import collect_all
 
-block_cipher = None
+ROOT = Path(SPECPATH)
+
+pdf_datas, pdf_binaries, pdf_hiddenimports = collect_all('pypdfium2')
 
 a = Analysis(
-    ['main.py'],
-    pathex=[],
-    binaries=[],
-    datas=[('assets/FResucitary.png', 'assets')],
-    hiddenimports=[],
+    [str(ROOT / 'main.py')],
+    pathex=[str(ROOT)],
+    binaries=pdf_binaries,
+    datas=pdf_datas,
+    hiddenimports=[
+        'pytsk3',
+        'PyQt6.QtCore', 'PyQt6.QtGui', 'PyQt6.QtWidgets',
+        'reportlab', 'reportlab.platypus', 'reportlab.lib',
+        'PIL', 'PIL.Image',
+        *pdf_hiddenimports,
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
+    excludes=['tkinter', 'matplotlib', 'numpy', 'scipy', 'notebook', 'pytest'],
+    noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='FResucitary',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    console=False,  # met True si tu veux voir les logs dans une console
-    icon='assets/FResucitary.png',  # logo comme icône de l'exécutable
+    upx=False,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    version=str(ROOT / 'packaging' / 'version_info.txt'),
+    uac_admin=False,
+    uac_uiaccess=False,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    name='FResucitary',
 )

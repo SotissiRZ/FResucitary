@@ -1,0 +1,13 @@
+FResucitary Pro — Licence propriétaire
+
+Copyright (c) 2026 FResucitary. Tous droits réservés.
+
+Ce logiciel est fourni pour un usage personnel ou professionnel autorisé.
+La redistribution, la revente, la modification ou la mise à disposition de
+copies à des tiers sans autorisation écrite du titulaire des droits est
+interdite.
+
+Le logiciel est fourni en l'état, sans garantie expresse ou implicite.
+La récupération de données comporte un risque intrinsèque de perte ou
+d'altération supplémentaire; travaillez de préférence sur une image disque
+et écrivez les fichiers récupérés sur un support différent de la source.
